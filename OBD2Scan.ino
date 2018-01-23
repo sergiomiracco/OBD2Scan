@@ -2,6 +2,7 @@
 #include <due_can.h>
 #include <iso-tp.h>
 #include "obd2_codes.h"
+#include "obd2_pid_desc.h"
 
 #ifndef  _VARIANT_MACCHINA_M2_
   #error "You don't seem to be compiling for the M2! Aborting!"
@@ -45,6 +46,21 @@ void displayBitfield(uint32_t bits)
     }
     SerialUSB.write(' ');
   }
+  SerialUSB.println();
+}
+void displaySupportedPidDesc(int n, uint32_t bits)
+{
+  for (int i = 0; i < 4; i++)
+  {
+    for (int j = 7; j > -1; j--)
+    {
+      if (bits & (1ul << ((i*8) + j)))
+      {
+        SerialUSB.println(PID_DESC[n*32+i*8+j]);
+      }
+    }
+  }
+  SerialUSB.println();
 }
 
 void queryECU(uint32_t id, IsoTp *iso)
@@ -112,7 +128,7 @@ void queryECU(uint32_t id, IsoTp *iso)
     {
       uint32_t bits = RxMsg.Buffer[2] + (RxMsg.Buffer[3] * 256) + (RxMsg.Buffer[4] * 65536ul) + (RxMsg.Buffer[5] * 256ul * 65536ul);
       displayBitfield(bits);
-      SerialUSB.println();
+      displaySupportedPidDesc(j, bits);
     }
     else
     {
@@ -144,7 +160,7 @@ void setup()
   for (int filter = 3; filter < 7; filter++) {
       Can0.setRXFilter(filter, 0, 0, false);
       Can1.setRXFilter(filter, 0, 0, false);
-   }  
+  }  
 
   TxMsg.Buffer=(uint8_t *)calloc(MAX_MSGBUF,sizeof(uint8_t));
   RxMsg.Buffer=(uint8_t *)calloc(MAX_MSGBUF,sizeof(uint8_t));
