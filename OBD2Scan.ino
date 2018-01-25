@@ -1,4 +1,6 @@
 
+#include <Arduino_Due_SD_HSMCI.h>
+
 #include <due_can.h>
 #include <iso-tp.h>
 #include "obd2_codes.h"
@@ -7,6 +9,8 @@
 #ifndef  _VARIANT_MACCHINA_M2_
   #error "You don't seem to be compiling for the M2! Aborting!"
 #endif
+
+FileStore FS;
 
 IsoTp isotp0(&Can0);
 IsoTp isotp1(&Can1);
@@ -142,6 +146,11 @@ void queryECU(uint32_t id, IsoTp *iso)
 void setup()
 {
   delay(4000);
+
+  // Check if there is card inserted
+  SD.Init(); // Initialization of HSCMI protocol and SD socket switch GPIO (to adjust pin number go to library source file - check Getting Started Guide)
+  FS.Init(); // Initialization of FileStore object for file manipulation
+  
   SerialUSB.begin(1000000);
   SerialUSB.println("OBDII Scanner for M2");
   SerialUSB.println("********************");
