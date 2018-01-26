@@ -56,11 +56,12 @@ void displaySupportedPidDesc(int n, uint32_t bits)
 {
   for (int i = 0; i < 4; i++)
   {
-    for (int j = 7; j > -1; j--)
+    for (int j = 0; j < 8; j++)
     {
       if (bits & (1ul << ((i*8) + j)))
       {
         SerialUSB.println(PID_DESC[n*32+i*8+j]);
+        logToSD(PID_DESC[n*32+i*8+j]);
       }
     }
   }
@@ -143,6 +144,17 @@ void queryECU(uint32_t id, IsoTp *iso)
   SerialUSB.println();
 }
 
+void logToSD(char* msg){
+  //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
+  //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
+  // Write to file
+  FS.Open("0:","log",true); 
+  FS.GoToEnd(); 
+  FS.Write(msg);
+  FS.Write('\n');  
+  FS.Close(); // to save data in file, we must close the file
+}
+
 void setup()
 {
   delay(4000);
@@ -150,12 +162,21 @@ void setup()
   // Check if there is card inserted
   SD.Init(); // Initialization of HSCMI protocol and SD socket switch GPIO (to adjust pin number go to library source file - check Getting Started Guide)
   FS.Init(); // Initialization of FileStore object for file manipulation
-  
+
+  char message_init[] = "OBDII Scanner for M2"; 
+
+  /**init SD Card log**/
+  FS.CreateNew("0:","log"); // Create new file, if alredy exists it will be overwritten
+  //FS.GoToEnd(); // Do not need when creating file because new file is opened and position 0
+  FS.Write(message_init); // writing message
+  FS.Write('\n');
+  FS.Close(); //close file to store 
+
+  /**init Serial log**/
   SerialUSB.begin(1000000);
-  SerialUSB.println("OBDII Scanner for M2");
-  SerialUSB.println("********************");
+  SerialUSB.println(message_init);
   SerialUSB.println();
-  
+
   SerialUSB.print("CAN0:");
   canSetupSpeed(&Can0, 500000);
   SerialUSB.print("CAN1:");
