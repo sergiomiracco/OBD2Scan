@@ -32,11 +32,11 @@ void canSetupSpeed(CAN_COMMON *bus, uint32_t defaultSpeed)
   }
   else
   {
-    bus->begin(defaultSpeed);
+    canSpeed = defaultSpeed;
     SerialUSB.print("Auto speed detect failed. Using ");
     SerialUSB.println(defaultSpeed);
   }  
-  SerialUSB.println();
+  bus->begin(canSpeed);
 }
 
 void displayBitfield(uint32_t bits)
@@ -60,8 +60,9 @@ void displaySupportedPidDesc(int n, uint32_t bits)
     {
       if (bits & (1ul << ((i*8) + j)))
       {
-        SerialUSB.println(PID_DESC[n*32+i*8+j]);
-        logToSD(PID_DESC[n*32+i*8+j]);
+        logToSerial(n*32+i*8+j);
+        logToSD(n*32+i*8+j);
+        //logToSD(PID_DESC[n*32+i*8+j]);
       }
     }
   }
@@ -142,6 +143,26 @@ void queryECU(uint32_t id, IsoTp *iso)
   }
 
   SerialUSB.println();
+}
+
+
+void logToSerial(uint8_t n){
+  SerialUSB.print(n+1);
+  SerialUSB.print(": ");
+  SerialUSB.println(PID_DESC[n]);
+}
+
+void logToSD(uint8_t n){
+  //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
+  //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
+  // Write to file
+  FS.Open("0:","log",true); 
+  FS.GoToEnd();
+  FS.Write(n+1);
+  FS.Write(": ");
+  FS.Write(PID_DESC[n-1]);
+  FS.Write('\n');  
+  FS.Close(); // to save data in file, we must close the file
 }
 
 void logToSD(char* msg){
