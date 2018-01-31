@@ -156,11 +156,12 @@ void logToSD(uint8_t n){
   //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
   //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
   // Write to file
+  String no = String(n,DEC);
   FS.Open("0:","log",true); 
   FS.GoToEnd();
-  FS.Write(n+1);
+  FS.Write(no.c_str());
   FS.Write(": ");
-  FS.Write(PID_DESC[n-1]);
+  FS.Write(PID_DESC[n]);
   FS.Write('\n');  
   FS.Close(); // to save data in file, we must close the file
 }
