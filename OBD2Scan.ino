@@ -62,7 +62,6 @@ void displaySupportedPidDesc(int n, uint32_t bits)
       {
         logToSerial(n*32+i*8+j);
         logToSD(n*32+i*8+j);
-        //logToSD(PID_DESC[n*32+i*8+j]);
       }
     }
   }
@@ -71,8 +70,12 @@ void displaySupportedPidDesc(int n, uint32_t bits)
 
 void queryECU(uint32_t id, IsoTp *iso)
 {
-  SerialUSB.print("Querying ECU at 0x");
-  SerialUSB.println(id, HEX);
+  char* msg_desc;
+  String sID = "Querying ECU at 0x" + String(id, HEX);
+  //msg_desc = sID.c_str();
+  SerialUSB.println(sID);
+  //SerialUSB.println(id, HEX);
+  logToSD((char*) sID.c_str());
 
   TxMsg.len = 2;
   TxMsg.tx_id = id;
@@ -80,17 +83,26 @@ void queryECU(uint32_t id, IsoTp *iso)
   TxMsg.Buffer[0] = OBDII_VEHICLE_INFO;
   TxMsg.Buffer[1] = VI_VIN;  
   iso->send(&TxMsg);
-  SerialUSB.print("Reported VIN#: ");
   RxMsg.tx_id = id;
   RxMsg.rx_id = id + REPLY_OFFSET;
   iso->receive(&RxMsg);
+
+  msg_desc = "Reported VIN#: ";
+  SerialUSB.print(msg_desc);
+  logToSD(msg_desc);
   
   if (RxMsg.tp_state == ISOTP_FINISHED)
-  {
+  {    
+    char msg_reply[RxMsg.len -2];    
     for (int i = 2; i < RxMsg.len; i++)  //the first two bytes are the mode and PID so skip those here.
     {
-      if (RxMsg.Buffer[i] != 0) SerialUSB.write(RxMsg.Buffer[i]);
+      if (RxMsg.Buffer[i] != 0)
+      {
+        msg_reply[i-2] = RxMsg.Buffer[i];
+        SerialUSB.write(RxMsg.Buffer[i]);
+      }
     }
+    logToSD(msg_reply);
     SerialUSB.println();
   }
   else
@@ -102,14 +114,24 @@ void queryECU(uint32_t id, IsoTp *iso)
   TxMsg.Buffer[0] = OBDII_VEHICLE_INFO;
   TxMsg.Buffer[1] = VI_ECU_NAME;
   iso->send(&TxMsg);
-  SerialUSB.print("Reported ECU Name: ");
+  delay(100);
   iso->receive(&RxMsg);
+  
+  msg_desc = "ECU name: ";
+  SerialUSB.print(msg_desc);
+  logToSD(msg_desc);
   if (RxMsg.tp_state == ISOTP_FINISHED)
   {
+    char msg_reply[RxMsg.len -2];
     for (int i = 2; i < RxMsg.len; i++)
     {
-      if (RxMsg.Buffer[i] != 0) SerialUSB.write(RxMsg.Buffer[i]);
+      if (RxMsg.Buffer[i] != 0)
+      {
+        msg_reply[i-2] = RxMsg.Buffer[i];
+        SerialUSB.write(RxMsg.Buffer[i]);
+      }
     }
+    logToSD(msg_reply);
     SerialUSB.println();
   }
   else
@@ -185,18 +207,19 @@ void setup()
   SD.Init(); // Initialization of HSCMI protocol and SD socket switch GPIO (to adjust pin number go to library source file - check Getting Started Guide)
   FS.Init(); // Initialization of FileStore object for file manipulation
 
-  char message_init[] = "OBDII Scanner for M2"; 
+  char* msg_init;
+  msg_init = "OBDII Scanner for M2"; 
 
   /**init SD Card log**/
   FS.CreateNew("0:","log"); // Create new file, if alredy exists it will be overwritten
   //FS.GoToEnd(); // Do not need when creating file because new file is opened and position 0
-  FS.Write(message_init); // writing message
+  FS.Write(msg_init); // writing message
   FS.Write('\n');
   FS.Close(); //close file to store 
 
   /**init Serial log**/
   SerialUSB.begin(1000000);
-  SerialUSB.println(message_init);
+  SerialUSB.println(msg_init);
   SerialUSB.println();
 
   SerialUSB.print("CAN0:");
@@ -223,15 +246,18 @@ void setup()
   very closely and thus use addresses outside this range and return offsets other than 0x8. 0x10 is common too.
   Modify REPLY_OFFSET to change the offset. Modify ECU_STARTID and ECU_ENDID to change the range.
   */
-
-  SerialUSB.println("----==== CAN0 ECUS ====----");
+  msg_init = "---- CAN0 ECUs ----";
+  SerialUSB.println(msg_init);
+  logToSD(msg_init);
   uint32_t ecuID;
   for (ecuID = ECU_STARTID; ecuID <= ECU_ENDID; ecuID++)
   {
     queryECU(ecuID, &isotp0);
   }
 
-  SerialUSB.println("----==== CAN1 ECUS ====----");
+  msg_init = "---- CAN1 ECUs ----";
+  logToSD(msg_init);
+  SerialUSB.println(msg_init);
   for (ecuID = ECU_STARTID; ecuID <= ECU_ENDID; ecuID++)
   {
     queryECU(ecuID, &isotp1);
