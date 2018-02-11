@@ -25,17 +25,16 @@ void canSetupSpeed(CAN_COMMON *bus, uint32_t defaultSpeed)
 {
 	bus->enable();
   uint32_t canSpeed = bus->beginAutoSpeed(); //try to figure out the proper speed automatically.
-  if (canSpeed > 0)
-  {
-    SerialUSB.print("Autobaud detected speed is ");
-    SerialUSB.println(canSpeed);  
-  }
-  else
+  if (canSpeed == 0)
   {
     canSpeed = defaultSpeed;
-    SerialUSB.print("Auto speed detect failed. Using ");
-    SerialUSB.println(defaultSpeed);
-  }  
+  }
+  SerialUSB.print("baud: ");
+  printToSD("baud:");
+  SerialUSB.print(canSpeed);
+  printToSD((char*) String(canSpeed,DEC).c_str());
+  SerialUSB.println(" B/s");
+  printlnToSD(" B/s");
   bus->begin(canSpeed);
 }
 
@@ -60,8 +59,8 @@ void displaySupportedPidDesc(int n, uint32_t bits)
     {
       if (bits & (1ul << ((i*8) + j)))
       {
-        logToSerial(n*32+i*8+j);
-        logToSD(n*32+i*8+j);
+        printPidToSerial(n*32+i*8+j);
+        printPidToSD(n*32+i*8+j);
       }
     }
   }
@@ -75,7 +74,7 @@ void queryECU(uint32_t id, IsoTp *iso)
   //msg_desc = sID.c_str();
   SerialUSB.println(sID);
   //SerialUSB.println(id, HEX);
-  logToSD((char*) sID.c_str());
+  printlnToSD((char*) sID.c_str());
 
   TxMsg.len = 2;
   TxMsg.tx_id = id;
@@ -87,9 +86,9 @@ void queryECU(uint32_t id, IsoTp *iso)
   RxMsg.rx_id = id + REPLY_OFFSET;
   iso->receive(&RxMsg);
 
-  msg_desc = "Reported VIN#: ";
+  msg_desc = "Reported VIN#:";
   SerialUSB.print(msg_desc);
-  logToSD(msg_desc);
+  printToSD(msg_desc);
   
   if (RxMsg.tp_state == ISOTP_FINISHED)
   {    
@@ -99,11 +98,10 @@ void queryECU(uint32_t id, IsoTp *iso)
       if (RxMsg.Buffer[i] != 0)
       {
         msg_reply[i-2] = RxMsg.Buffer[i];
-        SerialUSB.write(RxMsg.Buffer[i]);
       }
-    }
-    logToSD(msg_reply);
-    SerialUSB.println();
+    } 
+    printlnToSD(msg_desc);
+    SerialUSB.println(msg_desc);
   }
   else
   {
@@ -117,9 +115,9 @@ void queryECU(uint32_t id, IsoTp *iso)
   delay(100);
   iso->receive(&RxMsg);
   
-  msg_desc = "ECU name: ";
+  msg_desc = "ECU name:";
   SerialUSB.print(msg_desc);
-  logToSD(msg_desc);
+  printToSD(msg_desc);
   if (RxMsg.tp_state == ISOTP_FINISHED)
   {
     char msg_reply[RxMsg.len -2];
@@ -128,11 +126,11 @@ void queryECU(uint32_t id, IsoTp *iso)
       if (RxMsg.Buffer[i] != 0)
       {
         msg_reply[i-2] = RxMsg.Buffer[i];
-        SerialUSB.write(RxMsg.Buffer[i]);
       }
     }
-    logToSD(msg_reply);
-    SerialUSB.println();
+    //printPidToSerial(msg_reply);
+    SerialUSB.println(msg_reply);
+    printlnToSD(msg_reply);
   }
   else
   {
@@ -146,7 +144,7 @@ void queryECU(uint32_t id, IsoTp *iso)
     TxMsg.Buffer[0] = OBDII_SHOW_CURRENT;
     TxMsg.Buffer[1] = PID_SUPPORTED1 + (j * 0x20);
     iso->send(&TxMsg);
-    SerialUSB.print("Supported PIDs ");
+    SerialUSB.print("Supported PIDs");
     SerialUSB.print(j * 32 + 1);
     SerialUSB.print("-");
     SerialUSB.print((j * 32) + 32);
@@ -168,13 +166,13 @@ void queryECU(uint32_t id, IsoTp *iso)
 }
 
 
-void logToSerial(uint8_t n){
+void printPidToSerial(uint8_t n){
   SerialUSB.print(n+1);
   SerialUSB.print(": ");
   SerialUSB.println(PID_DESC[n]);
 }
 
-void logToSD(uint8_t n){
+void printPidToSD(uint8_t n){
   //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
   //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
   // Write to file
@@ -188,14 +186,22 @@ void logToSD(uint8_t n){
   FS.Close(); // to save data in file, we must close the file
 }
 
-void logToSD(char* msg){
+void printlnToSD(char* msg){
+  FS.Open("0:","log",true); 
+  FS.GoToEnd(); 
+  FS.Write(msg);
+  FS.Write('\n');  
+  FS.Close(); // to save data in file, we must close the file  
+}
+
+void printToSD(char* msg){
   //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
   //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
   // Write to file
   FS.Open("0:","log",true); 
   FS.GoToEnd(); 
   FS.Write(msg);
-  FS.Write('\n');  
+  FS.Write(' ');
   FS.Close(); // to save data in file, we must close the file
 }
 
@@ -203,8 +209,7 @@ void setup()
 {
   delay(4000);
 
-  // Check if there is card inserted
-  SD.Init(); // Initialization of HSCMI protocol and SD socket switch GPIO (to adjust pin number go to library source file - check Getting Started Guide)
+  SD.Init(); // Check if there is card inserted
   FS.Init(); // Initialization of FileStore object for file manipulation
 
   char* msg_init;
@@ -222,9 +227,9 @@ void setup()
   SerialUSB.println(msg_init);
   SerialUSB.println();
 
-  SerialUSB.print("CAN0:");
+  SerialUSB.print("CAN0 ");
   canSetupSpeed(&Can0, 500000);
-  SerialUSB.print("CAN1:");
+  SerialUSB.print("CAN1 ");
   canSetupSpeed(&Can1, 250000);
   
   for (int filter = 0; filter < 3; filter++) {
@@ -248,7 +253,7 @@ void setup()
   */
   msg_init = "---- CAN0 ECUs ----";
   SerialUSB.println(msg_init);
-  logToSD(msg_init);
+  printlnToSD(msg_init);
   uint32_t ecuID;
   for (ecuID = ECU_STARTID; ecuID <= ECU_ENDID; ecuID++)
   {
@@ -256,8 +261,8 @@ void setup()
   }
 
   msg_init = "---- CAN1 ECUs ----";
-  logToSD(msg_init);
   SerialUSB.println(msg_init);
+  printlnToSD(msg_init);
   for (ecuID = ECU_STARTID; ecuID <= ECU_ENDID; ecuID++)
   {
     queryECU(ecuID, &isotp1);
