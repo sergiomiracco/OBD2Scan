@@ -80,7 +80,7 @@ void queryECU(uint32_t id, IsoTp *iso)
   TxMsg.tx_id = id;
   TxMsg.rx_id = id + REPLY_OFFSET;
   TxMsg.Buffer[0] = OBDII_VEHICLE_INFO;
-  TxMsg.Buffer[1] = VI_VIN;  
+  TxMsg.Buffer[1] = VI_VIN;
   iso->send(&TxMsg);
   RxMsg.tx_id = id;
   RxMsg.rx_id = id + REPLY_OFFSET;
@@ -92,7 +92,7 @@ void queryECU(uint32_t id, IsoTp *iso)
   
   if (RxMsg.tp_state == ISOTP_FINISHED)
   {    
-    char msg_reply[RxMsg.len -2];    
+    char msg_reply[RxMsg.len - 2];    
     for (int i = 2; i < RxMsg.len; i++)  //the first two bytes are the mode and PID so skip those here.
     {
       if (RxMsg.Buffer[i] != 0)
@@ -100,15 +100,15 @@ void queryECU(uint32_t id, IsoTp *iso)
         msg_reply[i-2] = RxMsg.Buffer[i];
       }
     } 
-    printlnToSD(msg_desc);
-    SerialUSB.println(msg_desc);
+    SerialUSB.println(msg_reply);
+    printlnToSD(msg_reply);
   }
   else
   {
     SerialUSB.println("ERR!");
+    printlnToSD("ERR!");
   }
   RxMsg.tp_state = ISOTP_IDLE;
-
   TxMsg.Buffer[0] = OBDII_VEHICLE_INFO;
   TxMsg.Buffer[1] = VI_ECU_NAME;
   iso->send(&TxMsg);
@@ -120,7 +120,7 @@ void queryECU(uint32_t id, IsoTp *iso)
   printToSD(msg_desc);
   if (RxMsg.tp_state == ISOTP_FINISHED)
   {
-    char msg_reply[RxMsg.len -2];
+    char msg_reply[RxMsg.len - 2];
     for (int i = 2; i < RxMsg.len; i++)
     {
       if (RxMsg.Buffer[i] != 0)
@@ -128,13 +128,13 @@ void queryECU(uint32_t id, IsoTp *iso)
         msg_reply[i-2] = RxMsg.Buffer[i];
       }
     }
-    //printPidToSerial(msg_reply);
     SerialUSB.println(msg_reply);
     printlnToSD(msg_reply);
   }
   else
   {
     SerialUSB.println("ERR!");
+    printlnToSD("ERR!");
   }
   RxMsg.tp_state = ISOTP_IDLE;
 
