@@ -11,6 +11,9 @@
 #endif
 
 FileStore FS;
+bool sd_present = false;
+String dir;
+String vinNo;
 
 IsoTp isotp0(&Can0);
 IsoTp isotp1(&Can1);
@@ -100,11 +103,13 @@ void queryECU(uint32_t id, IsoTp *iso)
         msg_reply[i-2] = RxMsg.Buffer[i];
       }
     } 
+    vinNo = String(msg_reply);
     SerialUSB.println(msg_reply);
     printlnToSD(msg_reply);
   }
   else
   {
+    vinNo = "ERR";
     SerialUSB.println("ERR!");
     printlnToSD("ERR!");
   }
@@ -173,63 +178,77 @@ void printPidToSerial(uint8_t n){
 }
 
 void printPidToSD(uint8_t n){
-  //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
-  //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
-  // Write to file
-  String no = String(n,DEC);
-  FS.Open("0:","log",true); 
-  FS.GoToEnd();
-  FS.Write(no.c_str());
-  FS.Write(": ");
-  FS.Write(PID_DESC[n]);
-  FS.Write('\n');  
-  FS.Close(); // to save data in file, we must close the file
+  if(sd_present)
+  {
+    //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
+    //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
+    // Write to file
+    String no = String(n,DEC);
+    FS.Open("0:","log",true); 
+    FS.GoToEnd();
+    FS.Write(no.c_str());
+    FS.Write(": ");
+    FS.Write(PID_DESC[n]);
+    FS.Write('\n');  
+    FS.Close(); // to save data in file, we must close the file
+  }
 }
 
 void printlnToSD(char* msg){
-  FS.Open("0:","log",true); 
-  FS.GoToEnd(); 
-  FS.Write(msg);
-  FS.Write('\n');  
-  FS.Close(); // to save data in file, we must close the file  
+  if(sd_present)
+  {
+    FS.Open("0:","log",true); 
+    FS.GoToEnd(); 
+    FS.Write(msg);
+    FS.Write('\n');  
+    FS.Close(); // to save data in file, we must close the file  
+  }
 }
 
 void printToSD(char* msg){
-  //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
-  //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
-  // Write to file
-  FS.Open("0:","log",true); 
-  FS.GoToEnd(); 
-  FS.Write(msg);
-  FS.Write(' ');
-  FS.Close(); // to save data in file, we must close the file
+  if(sd_present)
+  {
+    //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
+    //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
+    // Write to file
+    FS.Open("0:","log",true); 
+    FS.GoToEnd(); 
+    FS.Write(msg);
+    FS.Write(' ');
+    FS.Close(); // to save data in file, we must close the file
+  }
 }
 
 void setup()
 {
   delay(4000);
 
-  SD.Init(); // Check if there is card inserted
-  FS.Init(); // Initialization of FileStore object for file manipulation
-
   char* msg_init;
   msg_init = "OBDII Scanner for M2"; 
 
-  /**init SD Card log**/
-  FS.CreateNew("0:","log"); // Create new file, if alredy exists it will be overwritten
-  //FS.GoToEnd(); // Do not need when creating file because new file is opened and position 0
-  FS.Write(msg_init); // writing message
-  FS.Write('\n');
-  FS.Close(); //close file to store 
+  sd_present = SD.Init(); // Check if there is card inserted
 
+  if(sd_present)
+  {
+    FS.Init(); // Initialization of FileStore object for file manipulation
+    /**init SD Card log**/
+    FS.CreateNew("0:","log"); // Create new file, if alredy exists it will be overwritten
+    //FS.GoToEnd(); // Do not need when creating file because new file is opened and position 0
+    FS.Write(msg_init); // writing message
+    FS.Write('\n');
+    FS.Close(); //close file to store 
+  }
+  
   /**init Serial log**/
   SerialUSB.begin(1000000);
   SerialUSB.println(msg_init);
   SerialUSB.println();
 
   SerialUSB.print("CAN0 ");
+  printToSD("CAN0 ");
   canSetupSpeed(&Can0, 500000);
   SerialUSB.print("CAN1 ");
+  printToSD("CAN1 ");
   canSetupSpeed(&Can1, 250000);
   
   for (int filter = 0; filter < 3; filter++) {
@@ -267,7 +286,25 @@ void setup()
   {
     queryECU(ecuID, &isotp1);
   }
+}
 
+
+void prepareDir(){
+  String prefix = "scan";
+  int i = 0;
+  bool found = false;
+  FileInfo fi;
+  
+  while(SD.FindNext(fi)){
+    if(fi.isDirectory){
+      if(String(fi.fileName).startsWith(prefix)){
+        i++;
+      }
+    }
+  }
+  dir = prefix + String(i+1,DEC);
+  SD.MakeDirectory("0:",(char*) dir.c_str());
+  dir = "0:" + dir;
 }
 
 void loop()
