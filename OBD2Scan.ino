@@ -184,7 +184,7 @@ void printPidToSD(uint8_t n){
     //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
     // Write to file
     String no = String(n,DEC);
-    FS.Open("0:","log",true); 
+    FS.Open((char*)dir.c_str(),"log",true); 
     FS.GoToEnd();
     FS.Write(no.c_str());
     FS.Write(": ");
@@ -197,7 +197,7 @@ void printPidToSD(uint8_t n){
 void printlnToSD(char* msg){
   if(sd_present)
   {
-    FS.Open("0:","log",true); 
+    FS.Open((char*)dir.c_str(),"log",true); 
     FS.GoToEnd(); 
     FS.Write(msg);
     FS.Write('\n');  
@@ -211,7 +211,7 @@ void printToSD(char* msg){
     //char write_buffer[sizeof(msg)]; // Creating array of char in length of our string
     //msg.toCharArray(write_buffer,sizeof(msg)); // transform string to array of chars of strings's size
     // Write to file
-    FS.Open("0:","log",true); 
+    FS.Open((char*)dir.c_str(),"log",true); 
     FS.GoToEnd(); 
     FS.Write(msg);
     FS.Write(' ');
@@ -230,11 +230,12 @@ void setup()
 
   if(sd_present)
   {
+    prepareDir(); //create folder for log
+    
     FS.Init(); // Initialization of FileStore object for file manipulation
     /**init SD Card log**/
-    FS.CreateNew("0:","log"); // Create new file, if alredy exists it will be overwritten
-    //FS.GoToEnd(); // Do not need when creating file because new file is opened and position 0
-    FS.Write(msg_init); // writing message
+    FS.CreateNew((char*)dir.c_str(),"log"); // Create the log file 
+    FS.Write(msg_init);
     FS.Write('\n');
     FS.Close(); //close file to store 
   }
@@ -292,8 +293,8 @@ void setup()
 void prepareDir(){
   String prefix = "scan";
   int i = 0;
-  bool found = false;
   FileInfo fi;
+  SD.FindFirst("0:",fi);
   
   while(SD.FindNext(fi)){
     if(fi.isDirectory){
