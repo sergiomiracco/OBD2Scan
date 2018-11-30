@@ -252,12 +252,12 @@ void setup()
   printToSD("CAN1 ");
   canSetupSpeed(&Can1, 250000);
   
-  for (int filter = 0; filter < 3; filter++) {
+  for (int filter = 0; filter < 4; filter++) {
       Can0.setRXFilter(filter, 0, 0, true);
       Can1.setRXFilter(filter, 0, 0, true);
   }  
   //standard
-  for (int filter = 3; filter < 7; filter++) {
+  for (int filter = 3; filter < 8; filter++) {
       Can0.setRXFilter(filter, 0, 0, false);
       Can1.setRXFilter(filter, 0, 0, false);
   }  
