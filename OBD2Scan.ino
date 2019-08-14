@@ -26,19 +26,33 @@ struct Message_t TxMsg, RxMsg;
 
 void canSetupSpeed(CAN_COMMON *bus, uint32_t defaultSpeed)
 {
-	bus->enable();
+  bus->enable();
+  
   uint32_t canSpeed = bus->beginAutoSpeed(); //try to figure out the proper speed automatically.
+  
   if (canSpeed == 0)
   {
-    canSpeed = defaultSpeed;
+    bus->enable();
+    bus->begin(defaultSpeed, 255);
+	
+    SerialUSB.print("Auto speed detect failed. Using ");
+    SerialUSB.println(defaultSpeed);
   }
-  SerialUSB.print("baud: ");
-  printToSD("baud:");
-  SerialUSB.print(canSpeed);
+  else
+  {
+	SerialUSB.print(canSpeed);
+	SerialUSB.println(" B/s");
+  }
+  SerialUSB.println();
+
+  //important! autobaud enables listen only
+  bus->setListenOnlyMode(false); 
+
+  //log to SD
+  printToSD("CAN speed: ");
   printToSD((char*) String(canSpeed,DEC).c_str());
-  SerialUSB.println(" B/s");
   printlnToSD(" B/s");
-  bus->begin(canSpeed);
+  
 }
 
 void displayBitfield(uint32_t bits)
@@ -311,4 +325,3 @@ void prepareDir(){
 void loop()
 { 
 }
-
